@@ -5,6 +5,7 @@ import {Bot} from "./bot";
 import {Client} from "discord.js";
 import {MessageResponder} from "./services/message-responder";
 import {PingFinder} from "./services/ping-finder";
+import {GetPokemon} from "./services/get-pokemon";
 
 let container = new Container();
 
@@ -13,5 +14,6 @@ container.bind<Client>(TYPES.Client).toConstantValue(new Client());
 container.bind<string>(TYPES.Token).toConstantValue(process.env.TOKEN);
 container.bind<MessageResponder>(TYPES.MessageResponder).to(MessageResponder).inSingletonScope();
 container.bind<PingFinder>(TYPES.PingFinder).to(PingFinder).inSingletonScope();
+container.bind<GetPokemon>(TYPES.GetPokemon).to(GetPokemon).inSingletonScope();
 
 export default container;

@@ -1,5 +1,4 @@
 import {Client, Message} from "discord.js";
-
 require('dotenv').config(); // Recommended way of loading dotenv
 import container from "./inversify.config";
 import {TYPES} from "./types";

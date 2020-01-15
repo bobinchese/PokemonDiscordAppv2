@@ -4,5 +4,5 @@ export const TYPES = {
     Token: Symbol("Token"),
     MessageResponder: Symbol("MessageResponder"),
     PingFinder: Symbol("PingFinder"),
-    GetPokemon: Symbol("GetPokemon"),
+    PokeFunctions: Symbol("PokeFunctions"),
   };

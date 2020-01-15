@@ -2,19 +2,19 @@ import {Message} from "discord.js";
 import {PingFinder} from "./ping-finder";
 import {inject, injectable} from "inversify";
 import {TYPES} from "../types";
-import { GetPokemon } from "./get-pokemon";
+import { PokeFunctions } from "./commands";
 
 @injectable()
 export class MessageResponder {
   private pingFinder: PingFinder;
-  private getPokemon: GetPokemon;
+  private pokeFunctions: PokeFunctions;
 
   constructor(
     @inject(TYPES.PingFinder) pingFinder: PingFinder,
-    @inject(TYPES.GetPokemon) getPokemon: GetPokemon
+    @inject(TYPES.PokeFunctions) pokeFunctions: PokeFunctions
   ) {
     this.pingFinder = pingFinder;
-    this.getPokemon = getPokemon;
+    this.pokeFunctions = pokeFunctions;
   }
     
 
@@ -23,13 +23,15 @@ export class MessageResponder {
     const input = message.content.substring(message.content.indexOf(' ')+1); //the rest of the input, to be passed to the function
     if ((command == '!pokemon ') || (command == '!poke ') || (command == '!p ')){
       if (input.includes(' ')){
-        return message.reply(this.getPokemon.getPokemonStats(input.substring(0,input.indexOf(' ')),input.substring(input.indexOf(' ')+1)))
+        return message.reply(this.pokeFunctions.getPokemonStats(input.substring(0,input.indexOf(' ')),input.substring(input.indexOf(' ')+1)))
       }
       else{
-        return message.reply(this.getPokemon.getPokemonStats(input))
+        return message.reply(this.pokeFunctions.getPokemonStats(input))
       }      
     }
-
+    if((command == '!save ') || (command == '!s ')){
+      return message.reply(this.pokeFunctions.savePokemon(input,message.author.username))
+    }
     return Promise.reject();
   }
 }

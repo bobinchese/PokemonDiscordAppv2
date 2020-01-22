@@ -1,7 +1,22 @@
 import {injectable} from "inversify";
-import {SPECIES} from "../damage-calc/data/species";
-import {Pokemon} from "../damage-calc/pokemon"
+import {SPECIES, Gender} from "../damage-calc/data/species";
+import {Pokemon} from "../damage-calc/pokemon";
+import {Stat,StatsTable} from "../damage-calc/stats";
 import * as fs from 'fs';
+import { stringify } from "querystring";
+
+class SaveFile {
+    name: string;
+    pokemon: Pokemon;
+
+    constructor(
+        name: string,
+        pokemon: Pokemon,
+    ) {
+        this.name = name;
+        this.pokemon = pokemon;
+    }
+}
 
 @injectable()
 export class PokeFunctions {
@@ -50,28 +65,30 @@ export class PokeFunctions {
     }
 
     public savePokemon(inputString: string, username: string): string{
-        //split input lines into
+        
         var gender: string = '';
         var item: string = '';
         var name: string = '';
         var nickname: string = '';
         var ability: string = '';
-        var level: string = '';
+        var level: string = '50';
         var shiny: string = '';
-        var evs: string[] = [];
-        var ivs: string[] = [];
+        var evs: string[] = ['0','0','0','0','0','0'];
+        var nature: string = 'serious';
+        var ivs: string[] = ['0','0','0','0','0','0'];
         var moves: string[] = [];
 
         var outputstring: string = '';
+        //split input lines into
         var inputLines: string[] = inputString.split(/\r?\n/);
         //remove gender from firstline
         if (inputLines[0].includes('(M)')){
             inputLines[0] = inputLines[0].replace('(M)','');
-            gender = 'M';
+            gender = 'male';
         }
         if (inputLines.includes('(F)')){
             inputLines[0] = inputLines[0].replace('(F)','');
-            gender = 'F';
+            gender = 'female';
         }
         //remove item from firstline
         if (inputLines[0].includes('@')){
@@ -85,6 +102,7 @@ export class PokeFunctions {
         }
         else{
             name = inputLines[0].trim();
+            nickname = name;
         }
 
         //Fail if pokemon doesn't exist in this generation
@@ -98,7 +116,7 @@ export class PokeFunctions {
                 ability = line.substr(line.indexOf(':')+1)
             }
             if(line.startsWith('Level:')){
-                level = line.substr(line.indexOf(':')+1)
+                level = line.substr(line.indexOf(':')+1);
             }
             if(line.startsWith('Shiny:')){
                 shiny = 'yes'
@@ -126,6 +144,9 @@ export class PokeFunctions {
                     }
                 });
             }
+            if(line.includes('Nature')){
+                nature = line.substr(0,line.indexOf(' '));
+            }
             if(line.startsWith('IVs:')){
                 var snips: string[] = line.split('/');
                 snips.forEach(snip => {
@@ -152,23 +173,62 @@ export class PokeFunctions {
             if(line.startsWith('-')){
                 moves.push(line.substr(2));
             }
+            
         });
-        
-        
-        outputstring = 'gender: '+gender+'\nitem: '+item+'\nnickname: '+nickname+'\nname: '+name+'\nability: '+ability+'\nlevel: '+level+'\nshiny: '+shiny+'\nmoves: '+moves+'\nevs: '+evs+'\nivs: '+ivs+'\n\n';
 
-        //write Pokemon to file
-        fs.writeFile('./files/savedPokemon/'+username+'.txt',outputstring,{flag:'a+'},function (err) {
-            if (err) throw err;
-        })
+        //make sure there are 4 moves even if blank for formatting
+        for(var i=0;i<4-moves.length;){
+            moves.push('');
+        }
+        
+        //string to be injected into json object
+        var newPoke: string = '{\
+            "species" : "'+name+'",\
+            "gender" : "'+gender+'",\
+            "item" : "'+item+'",\
+            "ability" : "'+ability+'",\
+            "level" : "'+level+'",\
+            "shiny" : "'+shiny+'",\
+            "nature" : "'+nature+'",\
+            "evs" : {\
+                "hp" : "'+evs[0]+'",\
+                "atk" : "'+evs[1]+'",\
+                "def" : "'+evs[2]+'",\
+                "spa" : "'+evs[3]+'",\
+                "spd" : "'+evs[4]+'",\
+                "spe" : "'+evs[5]+'"\
+            },\
+            "ivs" : {\
+                "hp" : "'+ivs[0]+'",\
+                "atk" : "'+ivs[1]+'",\
+                "def" : "'+ivs[2]+'",\
+                "spa" : "'+ivs[3]+'",\
+                "spd" : "'+ivs[4]+'",\
+                "spe" : "'+ivs[5]+'"\
+            },\
+            "moves" : {\
+                "move1" : "'+moves[0]+'",\
+                "move2" : "'+moves[1]+'",\
+                "move3" : "'+moves[2]+'",\
+                "move4" : "'+moves[3]+'"\
+            }\
+        }';
+
+        var filepath: string = './files/savedPokemon/'+username+'.json';
+        var customPoke = {};
+        if (fs.existsSync(filepath)){
+            let rawdata = fs.readFileSync(filepath);
+            customPoke = JSON.parse(rawdata.toString());
+            customPoke[nickname] = JSON.parse(newPoke)
+        }
+        else {
+            customPoke[nickname] = JSON.parse(newPoke)
+        }
+      
+
+        fs.writeFileSync(filepath,JSON.stringify(customPoke));
 
         //return that pokemon was saved
-        if (nickname != ''){
-            return(nickname+' the '+name+' has been added to your saved pokemon');
-        }
-        else{
-            return(name+' has been added to your saved pokemon');
-        }
-
+        return(nickname+' the '+name+' has been added to your saved pokemon');
     }
 }

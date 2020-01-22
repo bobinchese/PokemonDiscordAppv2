@@ -14,6 +14,7 @@ export type Status =
   | 'Frozen';
 
 export class Pokemon {
+  
   gen: Generation;
   name: string;
   species: Species;

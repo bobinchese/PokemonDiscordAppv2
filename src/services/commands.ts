@@ -1,7 +1,10 @@
 import {injectable} from "inversify";
 import {SPECIES, Gender} from "../damage-calc/data/species";
 import {Pokemon} from "../damage-calc/pokemon";
-import {Stat,StatsTable} from "../damage-calc/stats";
+import {Generation} from "../damage-calc/gen";
+import {Move} from '../damage-calc/move';
+import {calculate} from "../damage-calc/calc";
+import {StatsTable} from "../damage-calc/stats"
 import * as fs from 'fs';
 import { stringify } from "querystring";
 
@@ -126,21 +129,39 @@ export class PokeFunctions {
                 snips.forEach(snip => {
                     if(snip.includes('HP')){
                         evs[0] = snip.match(/(\d+)/)[0]
+                        if (evs[0] == ''){
+                            evs[0] = '0'
+                        }
                     }
                     if(snip.includes('Atk')){
                         evs[1] = snip.match(/(\d+)/)[0]
+                        if (evs[1] == ''){
+                            evs[1] = '0'
+                        }
                     }
                     if(snip.includes('Def')){
                         evs[2] = snip.match(/(\d+)/)[0]
+                        if (evs[2] == ''){
+                            evs[2] = '0'
+                        }
                     }
                     if(snip.includes('SpA')){
                         evs[3] = snip.match(/(\d+)/)[0]
+                        if (evs[3] == ''){
+                            evs[3] = '0'
+                        }
                     }
                     if(snip.includes('SpD')){
                         evs[4] = snip.match(/(\d+)/)[0]
+                        if (evs[4] == ''){
+                            evs[4] = '0'
+                        }
                     }
                     if(snip.includes('Spe')){
                         evs[5] = snip.match(/(\d+)/)[0]
+                        if (evs[5] == ''){
+                            evs[5] = '0'
+                        }
                     }
                 });
             }
@@ -152,21 +173,39 @@ export class PokeFunctions {
                 snips.forEach(snip => {
                     if(snip.includes('HP')){
                         ivs[0] = snip.match(/(\d+)/)[0]
+                        if (ivs[0] == ''){
+                            ivs[0] = '0'
+                        }
                     }
                     if(snip.includes('Atk')){
                         ivs[1] = snip.match(/(\d+)/)[0]
+                        if (ivs[1] == ''){
+                            ivs[1] = '0'
+                        }
                     }
                     if(snip.includes('Def')){
                         ivs[2] = snip.match(/(\d+)/)[0]
+                        if (ivs[1] == ''){
+                            ivs[1] = '0'
+                        }
                     }
                     if(snip.includes('SpA')){
                         ivs[3] = snip.match(/(\d+)/)[0]
+                        if (ivs[1] == ''){
+                            ivs[1] = '0'
+                        }
                     }
                     if(snip.includes('SpD')){
                         ivs[4] = snip.match(/(\d+)/)[0]
+                        if (ivs[1] == ''){
+                            ivs[1] = '0'
+                        }
                     }
                     if(snip.includes('Spe')){
                         ivs[5] = snip.match(/(\d+)/)[0]
+                        if (ivs[1] == ''){
+                            ivs[1] = '0'
+                        }
                     }
                 });
             }
@@ -230,5 +269,100 @@ export class PokeFunctions {
 
         //return that pokemon was saved
         return(nickname+' the '+name+' has been added to your saved pokemon');
+    }
+
+    public damagecalc(inputString: string, username: string) {
+        let generation: Generation = 8;
+        if (!inputString.includes('vs')){
+            return('ERROR: invalid syntax')
+        }
+        var filepath: string = './files/savedPokemon/'+username+'.json';
+        //everything before the vs
+        let attackerstring: string = inputString.substr(0,inputString.indexOf("vs")-1);
+        var attacker: Pokemon;
+        var defender: Pokemon;
+        
+        //pull custom pokemon
+        if(attackerstring.startsWith('my')){
+            //cut off the 'my'
+            attackerstring = attackerstring.substr(3);
+            if(attackerstring.includes(' ')){
+                var attackername = attackerstring.substr(0,attackerstring.indexOf(' '))
+            }
+            else{
+                var attackername = attackerstring
+            }
+            if (fs.existsSync(filepath)){
+                let rawdata = fs.readFileSync(filepath);
+                let customPoke = JSON.parse(rawdata.toString());
+                if(!customPoke.hasOwnProperty(attackername)){
+                    return('ERROR: no custom pokemon named '+attackername)
+                }
+                let evs :StatsTable<number> = {hp: parseInt(customPoke[attackername]["evs"]["hp"]), atk: parseInt(customPoke[attackername]["evs"]["atk"]), def: parseInt(customPoke[attackername]["evs"]["def"]), spa: parseInt(customPoke[attackername]["evs"]["spa"]), spd: parseInt(customPoke[attackername]["evs"]["spd"]), spe: parseInt(customPoke[attackername]["evs"]["spe"])}
+                let ivs :StatsTable<number> = {hp: parseInt(customPoke[attackername]["ivs"]["hp"]), atk: parseInt(customPoke[attackername]["ivs"]["atk"]), def: parseInt(customPoke[attackername]["ivs"]["def"]), spa: parseInt(customPoke[attackername]["ivs"]["spa"]), spd: parseInt(customPoke[attackername]["ivs"]["spd"]), spe: parseInt(customPoke[attackername]["ivs"]["spe"])}
+                attacker = new Pokemon(generation, customPoke[attackername]["species"], {level: parseInt(customPoke[attackername]["level"]), item: customPoke[attackername]["item"], nature: customPoke[attackername]["nature"], ability: customPoke[attackername]["ability"], gender: customPoke[attackername]["gender"], evs: evs, ivs: ivs } )
+                //remove attackername from string
+                attackerstring = attackerstring.substr(attackername.length);
+            }
+            else {
+                return('ERROR: you have no saved pokemon')
+            }
+        }
+        //pull generic pokemon
+        else{
+            if(attackerstring.includes(' ')){
+                var attackername = attackerstring.substr(0,attackerstring.indexOf(' '))
+            }
+            else{
+                var attackername = attackerstring
+            }
+            attacker = new Pokemon(generation, attackername, {level: 50});
+            //remove attackername from string
+            attackerstring = attackerstring.substr(attackername.length);
+        }
+
+        //everythign after the vs
+        let defenderstring: string = inputString.substr(inputString.indexOf("vs")+3);
+
+        if(defenderstring.startsWith('my')){
+            //cut off the 'my'
+            defenderstring = defenderstring.substr(3);
+            if(defenderstring.includes(' ')){
+                var defendername = defenderstring.substr(0,defenderstring.indexOf(' '))
+            }
+            else{
+                var defendername = defenderstring
+            }
+            if (fs.existsSync(filepath)){
+                let rawdata = fs.readFileSync(filepath);
+                let customPoke = JSON.parse(rawdata.toString());
+                if(!customPoke.hasOwnProperty(defendername)){
+                    return('ERROR: no custom pokemon named '+defendername)
+                }
+                let evs :StatsTable<number> = {hp: parseInt(customPoke[defendername]["evs"]["hp"]), atk: parseInt(customPoke[defendername]["evs"]["atk"]), def: parseInt(customPoke[defendername]["evs"]["def"]), spa: parseInt(customPoke[defendername]["evs"]["spa"]), spd: parseInt(customPoke[defendername]["evs"]["spd"]), spe: parseInt(customPoke[defendername]["evs"]["spe"])}
+                let ivs :StatsTable<number> = {hp: parseInt(customPoke[defendername]["ivs"]["hp"]), atk: parseInt(customPoke[defendername]["ivs"]["atk"]), def: parseInt(customPoke[defendername]["ivs"]["def"]), spa: parseInt(customPoke[defendername]["ivs"]["spa"]), spd: parseInt(customPoke[defendername]["ivs"]["spd"]), spe: parseInt(customPoke[defendername]["ivs"]["spe"])}
+                defender = new Pokemon(generation, customPoke[defendername]["species"], {level: parseInt(customPoke[defendername]["level"]), item: customPoke[defendername]["item"], nature: customPoke[defendername]["nature"], ability: customPoke[defendername]["ability"], gender: customPoke[defendername]["gender"], evs: evs, ivs: ivs } )
+                //remove defendername from string
+                defenderstring = defenderstring.substr(defendername.length);
+            }
+            else {
+                return('ERROR: you have no saved pokemon')
+            }
+        }
+        //pull generic pokemon
+        else{
+            if(defenderstring.includes(' ')){
+                var defendername = defenderstring.substr(0,defenderstring.indexOf(' '))
+            }
+            else{
+                var defendername = defenderstring
+            }
+            defender = new Pokemon(generation, defendername, {level: 50});
+            //remove defendername from string
+            defenderstring = defenderstring.substr(defendername.length);
+        }
+        let attack = new Move(generation, 'Fire Blast');
+
+        return calculate(generation, attacker, defender, attack).desc();
     }
 }

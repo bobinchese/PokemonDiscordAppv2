@@ -4,22 +4,22 @@ import {Pokemon} from "../damage-calc/pokemon";
 import {Generation} from "../damage-calc/gen";
 import {Move} from '../damage-calc/move';
 import {calculate} from "../damage-calc/calc";
-import {StatsTable} from "../damage-calc/stats"
+import {StatsTable} from "../damage-calc/stats";
+import {GameType, Terrain, Weather, Field} from "../damage-calc/field";
 import * as fs from 'fs';
 import { stringify } from "querystring";
 
-class SaveFile {
-    name: string;
-    pokemon: Pokemon;
-
-    constructor(
-        name: string,
-        pokemon: Pokemon,
-    ) {
-        this.name = name;
-        this.pokemon = pokemon;
+//capitalize the first letter of every word in a string
+function titleCase(str: string): string {
+    var splitStr = str.toLowerCase().split(' ');
+    for (var i = 0; i < splitStr.length; i++) {
+        // You do not need to check if i is larger than splitStr length, as your for does that for you
+        // Assign it back to the array
+        splitStr[i] = splitStr[i].charAt(0).toUpperCase() + splitStr[i].substring(1);     
     }
-}
+    // Directly return the joined string
+    return splitStr.join(' '); 
+ }
 
 @injectable()
 export class PokeFunctions {
@@ -271,27 +271,45 @@ export class PokeFunctions {
         return(nickname+' the '+name+' has been added to your saved pokemon');
     }
 
+    public savePokemonTeam(inputString: string, username: string): string{
+        var outputstring: string = ''
+        let splitTeam = inputString.split('\n\n');
+        splitTeam.forEach(poke => {
+            outputstring = outputstring + this.savePokemon(poke, username)+'\n';
+        });
+        return(outputstring);
+    }
+
     public damagecalc(inputString: string, username: string) {
+        inputString = titleCase(inputString);
         let generation: Generation = 8;
-        if (!inputString.includes('vs')){
+        if (!inputString.includes('Vs')){
             return('ERROR: invalid syntax')
         }
         var filepath: string = './files/savedPokemon/'+username+'.json';
         //everything before the vs
-        let attackerstring: string = inputString.substr(0,inputString.indexOf("vs")-1);
+        let attackerstring: string = inputString.substr(0,inputString.indexOf("Vs")-1);
         var attacker: Pokemon;
         var defender: Pokemon;
+        var attack: Move;
+        var attackerEV: number = 0;
+        var attackerNature: string = 'neutral';
+        var defenderEV: number = 0;
+        var defenderNature: string = 'neutral';
+        var HPEV: number = 0;
+        var gametype: GameType = 'Doubles';
+        var terrain: Terrain;
+        var weather: Weather;
+        var battlefield: Field;
+
+
+        let attackersnips = attackerstring.split(" ");
         
-        //pull custom pokemon
-        if(attackerstring.startsWith('my')){
+        //pull custom pokemon and return string after pokemon
+        if(attackersnips[0] == 'My'){
             //cut off the 'my'
-            attackerstring = attackerstring.substr(3);
-            if(attackerstring.includes(' ')){
-                var attackername = attackerstring.substr(0,attackerstring.indexOf(' '))
-            }
-            else{
-                var attackername = attackerstring
-            }
+            var attackername = attackersnips[1];
+            attackersnips.splice(0,2);
             if (fs.existsSync(filepath)){
                 let rawdata = fs.readFileSync(filepath);
                 let customPoke = JSON.parse(rawdata.toString());
@@ -310,29 +328,65 @@ export class PokeFunctions {
         }
         //pull generic pokemon
         else{
-            if(attackerstring.includes(' ')){
-                var attackername = attackerstring.substr(0,attackerstring.indexOf(' '))
+            //pull evs and nature from front if exists
+            if(/\d/.test(attackersnips[0])){
+                if(attackersnips[0].includes("+")){
+                    attackerNature = 'positive'
+                }
+                if(attackersnips[0].includes("-")){
+                    attackerNature = 'negative'
+                }
+                attackerEV = parseInt(attackersnips[0].match(/(\d+)/)[0])
+                attackersnips.splice(0,1)
             }
-            else{
-                var attackername = attackerstring
+            //create attackerpokemon and give item
+            var itemname: string = '';
+            attackersnips.forEach(snip => {
+                if(this.allPoke[this.gen][snip]){
+                    attacker = new Pokemon(generation, snip, {level: 50, item: itemname.substr(0,itemname.length-1)});
+                }
+                else{
+                    itemname = itemname + snip + " ";
+                }
+            });
+            //cut out everything before the pokemon name and turn back into a normal string
+            attackersnips.splice(0,attackersnips.indexOf(attacker.name)+1)
+            
+        }
+
+        //combine string for move
+        var movestring = attackersnips.join(" ")
+        //TODO: check for Helping Hand, Power Spot and Battery
+        attack = new Move(generation, movestring);
+
+        //set attack EVs and nature based on move used and the +/- from the input
+        if (attack.category == 'Physical'){
+            attacker.evs.atk = attackerEV;
+            if (attackerNature == 'positive'){
+                attacker.nature = 'Adamant'
             }
-            attacker = new Pokemon(generation, attackername, {level: 50});
-            //remove attackername from string
-            attackerstring = attackerstring.substr(attackername.length);
+            if (attackerNature == 'negative'){
+                attacker.nature = 'Modest'
+            }
+        }
+        if (attack.category == "Special"){
+            attacker.evs.spa = attackerEV;
+            if (attackerNature == 'positive'){
+                attacker.nature = 'Modest'
+            }
+            if (attackerNature == 'negative'){
+                attacker.nature = 'Adamant'
+            }
         }
 
         //everythign after the vs
-        let defenderstring: string = inputString.substr(inputString.indexOf("vs")+3);
+        let defenderstring: string = inputString.substr(inputString.indexOf("Vs")+3);
+        let defendersnips = defenderstring.split(" ");
 
-        if(defenderstring.startsWith('my')){
+        if(defendersnips[0] == 'My'){
             //cut off the 'my'
-            defenderstring = defenderstring.substr(3);
-            if(defenderstring.includes(' ')){
-                var defendername = defenderstring.substr(0,defenderstring.indexOf(' '))
-            }
-            else{
-                var defendername = defenderstring
-            }
+            var defendername = defendersnips[1];
+            defendersnips.splice(0,2)
             if (fs.existsSync(filepath)){
                 let rawdata = fs.readFileSync(filepath);
                 let customPoke = JSON.parse(rawdata.toString());
@@ -351,18 +405,100 @@ export class PokeFunctions {
         }
         //pull generic pokemon
         else{
-            if(defenderstring.includes(' ')){
-                var defendername = defenderstring.substr(0,defenderstring.indexOf(' '))
+            //pull evs and nature from front if exists
+            if(defendersnips[0].includes('/')){
+                if(defendersnips[0].includes("+")){
+                    defenderNature = 'positive'
+                }
+                if(defendersnips[0].includes("-")){
+                    defenderNature = 'negative'
+                }               
+                HPEV = parseInt(defendersnips[0].substr(0,defendersnips[0].indexOf("/")));
+                defenderEV = parseInt(defendersnips[0].substr(defendersnips[0].indexOf("/")).match(/(\d+)/)[0]);
+                defendersnips.splice(0,1)
             }
-            else{
-                var defendername = defenderstring
-            }
-            defender = new Pokemon(generation, defendername, {level: 50});
-            //remove defendername from string
-            defenderstring = defenderstring.substr(defendername.length);
+            //create defenderpokemon and give item
+            itemname = '';
+            defendersnips.forEach(snip => {
+                if(this.allPoke[this.gen][snip]){
+                    defender = new Pokemon(generation, snip, {level: 50, item: itemname});
+                }
+                else{
+                    itemname = itemname + snip + " ";
+                }
+            });
+            //cut out everything before the pokemon name and turn back into a normal string
+            defendersnips.splice(0,defendersnips.indexOf(defender.name)+1)
         }
-        let attack = new Move(generation, 'Fire Blast');
+        //set defense/HP EVs and nature based on move used and the +/- from the input
+        defender.evs.hp = HPEV;
+        if (attack.category == 'Physical'){
+            defender.evs.def = defenderEV;
+            if (defenderNature == 'positive'){
+                defender.nature = 'Lax'
+            }
+            if (defenderNature == 'negative'){
+                defender.nature = 'Gentle'
+            }
+        }
+        if (attack.category == "Special"){
+            defender.evs.spd = defenderEV;
+            if (defenderNature == 'positive'){
+                defender.nature = 'Gentle'
+            }
+            if (defenderNature == 'negative'){
+                defender.nature = 'Lax'
+            }
+        }
 
-        return calculate(generation, attacker, defender, attack).desc();
+        //combine string for field setting
+        var fieldstring = defendersnips.join(" ")
+        //set gametype (default to doubles)
+        if (fieldstring.includes('Singles')){
+            gametype = 'Singles'
+        }
+        else{
+            gametype = 'Doubles'
+        }
+
+        //set terrain if included
+        if(fieldstring.includes('Electric')){
+            terrain = 'Electric'
+        }
+        if(fieldstring.includes('Grassy') || fieldstring.includes('Grass')){
+            terrain = 'Grassy'
+        }
+        if(fieldstring.includes('Psychic')){
+            terrain = 'Psychic'
+        }
+        if(fieldstring.includes('Misty')){
+            terrain = 'Misty'
+        }
+
+        if(fieldstring.includes('Sand') || fieldstring.includes('Sandstorm')){
+            weather = 'Sand'
+        }
+        if(fieldstring.includes('Sun')){
+            weather = 'Sun'
+        }
+        if(fieldstring.includes('Rain')){
+            weather = 'Rain'
+        }
+        if(fieldstring.includes('Hail')){
+            weather = 'Hail'
+        }
+        if(fieldstring.includes('Harsh Sunshine')){
+            weather = 'Harsh Sunshine'
+        }
+        if(fieldstring.includes('Heavy Rain')){
+            weather = 'Heavy Rain'
+        }
+        if(fieldstring.includes('Strong Winds')){
+            weather = 'Strong Winds'
+        }
+
+        battlefield = new Field({gameType: gametype, weather: weather, terrain: terrain, isGravity: fieldstring.includes("Gravity")});
+
+        return calculate(generation, attacker, defender, attack, battlefield).desc();
     }
 }

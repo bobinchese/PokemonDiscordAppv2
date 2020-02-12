@@ -32,6 +32,9 @@ export class MessageResponder {
     if((command == '!save ') || (command == '!s ')){
       return message.reply(this.pokeFunctions.savePokemon(input,message.author.username))
     }
+    if((command == '!saveteam ') || (command == '!st ')){
+      return message.reply(this.pokeFunctions.savePokemonTeam(input,message.author.username))
+    }
     if((command == '!damage ') || (command == '!d ') || (command == '!damagecalc '))
     {
       return message.reply(this.pokeFunctions.damagecalc(input, message.author.username))

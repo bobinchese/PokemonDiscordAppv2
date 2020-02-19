@@ -280,6 +280,27 @@ export class PokeFunctions {
         return(outputstring);
     }
 
+    public removePokemon(inputString: string, username: string) {
+        inputString = titleCase(inputString);
+        var filepath: string = './files/savedPokemon/'+username+'.json';
+        var customPoke = {};
+        if (fs.existsSync(filepath)){
+            let rawdata = fs.readFileSync(filepath);
+            customPoke = JSON.parse(rawdata.toString());
+            if(customPoke.hasOwnProperty(inputString)){
+                delete customPoke[inputString];
+                fs.writeFileSync(filepath,JSON.stringify(customPoke));
+                return(inputString+' has been removed from your saved pokemon');
+            }
+            else{
+                return('ERROR: no saved pokemon named '+inputString+' could be found');
+            }
+        }
+        else {
+            return('ERROR: '+username+' has no saved pokemon');
+        }
+    }
+
     public damagecalc(inputString: string, username: string) {
         inputString = titleCase(inputString);
         let generation: Generation = 8;
@@ -500,5 +521,24 @@ export class PokeFunctions {
         battlefield = new Field({gameType: gametype, weather: weather, terrain: terrain, isGravity: fieldstring.includes("Gravity")});
 
         return calculate(generation, attacker, defender, attack, battlefield).desc();
+    }
+    public help(inputString: string): string{
+        var returnString: string = "```Type !h [command] for a list of parameters for that command\nAvailable Commands:\n[s]ave\t[t]eam\t[r]emove\n[d]amage\t[p]okemon```";
+        if (inputString == 's'){
+            returnString = '```Save a custom pokemon: !s [SmogonOutput]\nPokemon will be saved under their nickname if it exists, otherwise they will be saved under their species name\nSaving a pokemon with the same nickname as an existing pokemon will overwrite that pokemon```'
+        }
+        if(inputString == 't'){
+            returnString = '```Save multiple custom pokemon: !t [SmogonOutput]\nPokemon will be saved under their nickname if it exists, otherwise they will be saved under their species name\nSaving a pokemon with the same nickname as an existing pokemon will overwrite that pokemon```'
+        }
+        if(inputString == 'r'){
+            returnString = '```Remove custom pokemon: !r [name]```'
+        }
+        if(inputString == 'd'){
+            returnString = '```Perform Damage Calculation: !d [attacker] [move] vs [defender] [field options]\nSaved attacker: My [name]\tGenerated Attacker: [attackingEV](+/- nature) (item) [name]\nSaved defender: My [name]\tGenerated Defender: [HPEV]/[defendingEV](+/- nature) (item) [name]\nField options: single, double, electric, grassy, psychic, misty, sand, sun, rain, hail\nAttackingEV and DefendingEV are determined by the move being used(atk/def for physical, spa/spd for special)\nNature should be denoted with either a plus or minus, the bot will assign the appropriate nature based on the move being used\nExample Input: !d 252+ Gyarados Fire blast vs 34/23+ Turtwig Grassy Rain\nReturns: 252+ SpA Gyarados Fire Blast vs. 34 HP / 23+ SpD Turtwig in Rain: 60-72 (44.7 - 53.7%) -- 12.9% chance to 2HKO after Grassy Terrain recovery```'
+        }
+        if(inputString == 'p'){
+            returnString = '```Return types, EVs and Abilities of a pokemon: !p [species name]\n```'
+        }
+        return (returnString)
     }
 }

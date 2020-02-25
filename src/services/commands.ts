@@ -322,9 +322,20 @@ export class PokeFunctions {
         var terrain: Terrain;
         var weather: Weather;
         var battlefield: Field;
+        var attackerBoost: number = 0;
+        var defenderBoost: number = 0;
 
 
         let attackersnips = attackerstring.split(" ");
+
+        if(attackersnips[0].startsWith('+')) {
+            attackerBoost = parseInt(attackersnips[0].substr(1));
+            attackersnips.splice(0,1);
+        }
+        if(attackersnips[0].startsWith('-')) {
+            attackerBoost = parseInt(attackersnips[0]);
+            attackersnips.splice(0,1);
+        }
         
         //pull custom pokemon and return string after pokemon
         if(attackersnips[0] == 'My'){
@@ -389,6 +400,7 @@ export class PokeFunctions {
             if (attackerNature == 'negative'){
                 attacker.nature = 'Modest'
             }
+            attacker.boosts.atk = attackerBoost;
         }
         if (attack.category == "Special"){
             attacker.evs.spa = attackerEV;
@@ -398,11 +410,22 @@ export class PokeFunctions {
             if (attackerNature == 'negative'){
                 attacker.nature = 'Adamant'
             }
+            attacker.boosts.spa = attackerBoost;
         }
 
         //everythign after the vs
         let defenderstring: string = inputString.substr(inputString.indexOf("Vs")+3);
         let defendersnips = defenderstring.split(" ");
+
+        if(attackersnips[0].startsWith('+')) {
+            defenderBoost = parseInt(defendersnips[0].substr(1));
+            defendersnips.splice(0,1);
+        }
+        if(defendersnips[0].startsWith('-')) {
+            defenderBoost = parseInt(defendersnips[0]);
+            defendersnips.splice(0,1);
+        }
+        
 
         if(defendersnips[0] == 'My'){
             //cut off the 'my'
@@ -461,6 +484,8 @@ export class PokeFunctions {
             if (defenderNature == 'negative'){
                 defender.nature = 'Gentle'
             }
+            defender.boosts.def = defenderBoost;
+            
         }
         if (attack.category == "Special"){
             defender.evs.spd = defenderEV;
@@ -470,6 +495,7 @@ export class PokeFunctions {
             if (defenderNature == 'negative'){
                 defender.nature = 'Lax'
             }
+            defender.boosts.spd = defenderBoost;
         }
 
         //combine string for field setting
